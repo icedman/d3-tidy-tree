@@ -1,0 +1,293 @@
+<html>
+<body></body>
+
+<style>
+text {
+    fill: black;
+}
+line {
+    stroke:rgb(250,120,120);
+    stroke-width:2;
+}
+svg {
+    background-color: gainsboro;
+}
+rect {
+    opacity: 0.2;
+}
+</style>
+<script type="text/javascript" src="d3.v4.min.js"></script>
+<script type="text/javascript" src="dist/d3TidyTree.js"></script>
+<script type="text/javascript">
+var data = {
+    name: "root",
+    children: [
+        { name:"node1" },
+        { name:"node2 abc 123 abc 456",
+            children: [
+                { name: "node2-1" },
+                { name: "node2-2" },
+           ]
+        },
+        { name:"node3",
+            children: [
+                { name: "node3-1" },
+                { name: "node3-2",
+
+                    children: [
+                        { name: "node3-1" },
+                        { name: "node3-2" },
+                    ]
+
+                 },
+           ]
+        },
+        { name: "node4",
+
+            children: [
+                { name: "node3-1" },
+                { name: "node3-2" },
+            ]
+
+         }
+    ]
+};
+
+// data = d3Extra.data;
+
+var root = d3.hierarchy(data);
+var layout = new d3Extra.Layout();
+layout.direction = 1;
+
+var descendants = root.descendants();
+
+for (var i in descendants) {
+    var d = descendants[i];
+
+    if (d.data.x_size != undefined && d.data.y_size != undefined) {
+        d.width = d.data.y_size * 8;
+        d.height = d.data.x_size * 8;
+        continue;
+    }
+
+    d.width = (d.data.name.length * 8) + 10;
+    d.height = 32;
+    if  (d.data.name == 'node3-1') {
+        d.height = 100;
+    }
+}
+
+// var tree = d3.tree().size([300,300]);
+// tree.nodeSize([100,200]);
+// tree.separation(function separation(a, b) {
+//     console.log('a ' + a.data.name);
+//     console.log('b ' + b.data.name);
+//   return (a.parent == b.parent ? 1 : 2);// / a.depth;
+// });
+// tree(root);
+
+layout.offsetX = 100;
+layout.tree(root);
+
+var r = d3Extra.Util.computeBounds(descendants);
+var width = r.width + 400;
+var height = r.height + 200;
+
+// append the svg object to the body of the page
+// appends a 'group' element to 'svg'
+// moves the 'group' element to the top left margin
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("class","root")
+
+var rootx;
+var rooty;
+function centerRoot(root)
+{
+    var r = d3Extra.Util.computeBounds(root.descendants());
+    var xx = width / 2 - r.width / 2;
+    var yy = height / 2 - r.height / 2;
+
+    if (r.x < 0)
+        xx += -r.x;
+    if (r.y < 0)
+        yy += -r.y;
+
+    if (rootx == undefined) {
+        rootx = xx;
+        rooty = yy;
+    } else {
+        // TODO: do not translate.. peg root to its original x,y
+        xx = rootx;
+        yy = rooty;
+    }
+
+    d3.select("g.root")
+        .attr("transform", `translate(${xx},${yy})`);
+}
+
+centerRoot(root);
+
+// d3.select("svg")
+//     .append("rect")
+//     .attr("x", 0)
+//     .attr("y", 0)
+//     .attr("width", width)
+//     .attr("height", height)
+//     .attr("style", "fill:blue;stroke:pink;stroke-width:5;fill-opacity:0.1;stroke-opacity:0.9");
+
+update(root);
+
+function update(root) {
+    var i = 0;
+    var nodes = root.descendants();
+    var gnodes = svg.selectAll('g.node')
+            .data(nodes, function(d, i) { if (!d.id) d.id = 'node_' + (i); return d.id; })
+
+    var links = root.links();
+    var glinks = svg.selectAll('line.link')
+           .data(links, function(d) { if (!d.id) d.id = 'link_' + d.source.id + '-' + d.target.id; return d.id; })
+
+    var glinksenter = glinks.enter()
+    
+    // update
+    glinks
+        .attr("x1", function(d) {
+            return d.source.px;
+        })
+        .attr("y1", function(d) {
+            return d.source.y + d.source.height/2;
+        })
+        .attr("x2", function(d) {
+            return d.target.x;
+        })
+        .transition()
+        .attr("y2", function(d) {
+            return d.target.y + d.target.height/2;
+        });
+
+    glinksenter
+        .append("line")
+        .attr("class", "link")
+        .attr("x1", function(d) {
+            return d.source.px;
+        })
+        .attr("y1", function(d) {
+            return d.source.y + d.source.height/2;
+        })
+        .attr("x2", function(d) {
+            return d.target.x;
+        })
+        .attr("y2", function(d) {
+            return d.target.y + d.target.height/2;
+        });
+
+
+    var genter = gnodes.enter()
+    
+    // update
+    gnodes
+        .transition()
+        .attr('transform', function(d) {
+                  return 'translate(' + d.x + ',' + d.y + ')';
+            })
+
+    gnodes
+        .select('text')
+            .attr('y', function(d) { return d.height / 2; })
+            .attr('text-anchor', function(d) { return d.direction == -1 ? 'end' : 'start' ; })
+
+    gnodes
+        .select('circle')
+            .attr('fill', function(d) {
+                if (d._children != undefined) {
+                    return 'blue';
+                }
+                return 'lightsteelblue';
+            })
+
+    var g = genter
+            .append('g')
+            .attr("class", "node")
+            .attr('transform', function(d) {
+                  return 'translate(' + d.x + ',' + d.y + ')';
+            })
+            .on('click', click);
+
+    g        
+            .append('circle')
+            .attr('r', 8)
+            .attr('fill', function(d) {
+                if (d._children != undefined) {
+                    return 'blue';
+                }
+                return 'lightsteelblue';
+            })
+
+    g        
+            .append('rect')
+            .attr('x', function(d) {
+                return d.direction == -1 ? -d.width : 0;
+            })
+            .attr('y', function(d) {
+                return 0;
+            })
+            .attr('width', function(d) {
+                return d.width;
+            })
+            .attr('height', function(d) {
+                return d.height - 2;
+            })
+            .attr('fill', 'grey');
+
+    g
+            .append('text')
+            .attr("dy", ".35em")
+            .attr('y', function(d) { return d.height / 2; })
+            .attr('text-anchor', function(d) { return d.direction == -1 ? 'end' : 'start' ; })
+            .text(function(d) {
+                return d.data.name;
+            });
+
+    function refresh() {
+        layout.tree(root);
+        update(root);
+        centerRoot(root);
+    }
+
+    // Toggle children on click.
+    function click(d) {
+
+        // var i = 1;
+        // if (i) {
+        //     console.log(d.x + ',' + d.y);
+        //     return;
+        // }
+
+        if (d.parent === undefined) {
+            layout.direction = layout.direction == -1 ? 1 : -1;
+            refresh();
+            return;
+        }
+
+        if (d.children) {
+            d._children = d.children;
+            d.children = undefined;
+        } else {
+            d.children = d._children;
+            d._children = undefined;
+        }
+
+        refresh();
+    }
+
+    gnodes.exit().remove();
+    glinks.exit().remove();
+
+}
+
+</script>
+
+</html>
