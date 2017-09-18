@@ -34,7 +34,7 @@ rect {
 </select>
 
 <b>Compress Tree</b> <input type="checkbox" id="compress" checked onchange="drawTree()"/>
-<b>Mirror Tree</b> <input type="checkbox" id="mirror" checked onchange="drawTree()"/>
+<b>Flip Tree</b> <input type="checkbox" id="flip" checked onchange="drawTree()"/>
 <b>Parent-Child Spacing</b> <input type="number" id="spacing" onchange="drawTree()" value="100"/>
 
 <div id="container"></div>
@@ -61,8 +61,8 @@ function drawTree() {
     computeSizes(descendants);
 
     layout.compressTree = document.querySelector('#compress').checked;
-    layout.parentChildSeparation = document.querySelector('#spacing').value;
-    layout.direction = document.querySelector('#mirror').checked ? -1 : 1;
+    layout.direction = document.querySelector('#flip').checked ? -1 : 1;
+    layout.parentChildSeparation = + document.querySelector('#spacing').value;
     layout.tree(root);
 
     var r = d3TidyTree.Util.computeBounds(descendants);
@@ -194,14 +194,13 @@ function update(root) {
         .attr("x1", function(d) {
             return d.source.x + d.source.width * d.source.direction;
         })
-        // .transition()
+        .transition()
         .attr("y1", function(d) {
             return d.source.y + d.source.height/2;
         })
         .attr("x2", function(d) {
             return d.target.x;
         })
-        // .transition()
         .attr("y2", function(d) {
             return d.target.y + d.target.height/2;
         });
@@ -216,11 +215,20 @@ function update(root) {
             return d.source.y + d.source.height/2;
         })
         .attr("x2", function(d) {
+            return d.source.x + d.source.width * d.source.direction;
+        })
+        .attr("y2", function(d) {
+            return d.source.y + d.source.height/2;
+        })
+        .style('opacity', 0)
+        .transition()
+        .attr("x2", function(d) {
             return d.target.x;
         })
         .attr("y2", function(d) {
             return d.target.y + d.target.height/2;
-        });
+        })
+        .style('opacity', 1)
 
 
     var genter = gnodes.enter()
@@ -229,7 +237,7 @@ function update(root) {
     gnodes
         .transition()
         .attr('transform', function(d) {
-                  return 'translate(' + d.x + ',' + d.y + ')';
+                return `translate(${d.x},${d.y})`;
             })
 
     gnodes
@@ -249,12 +257,22 @@ function update(root) {
     var g = genter
             .append('g')
             .attr("class", "node")
-            .attr('transform', function(d) {
-                  return 'translate(' + d.x + ',' + d.y + ')';
-            })
             .on('click', click);
 
-    g        
+        g            
+            .style('opacity', 0)
+            .attr('transform', function(d) {
+                var x = d.parent ? d.parent.x : d.x;
+                var y = d.parent ? d.parent.y : d.y;
+                return `translate(${x},${y})`;
+            })
+            .transition()
+            .style('opacity', 1)
+            .attr('transform', function(d) {
+                return `translate(${d.x},${d.y})`;
+            });
+
+        g        
             .append('circle')
             .attr('r', 8)
             .attr('fill', function(d) {
@@ -264,7 +282,7 @@ function update(root) {
                 return 'lightsteelblue';
             })
 
-    g        
+        g        
             .append('rect')
             .attr('x', function(d) {
                 return d.direction == -1 ? -d.width : 0;
@@ -280,7 +298,7 @@ function update(root) {
             })
             .attr('fill', 'grey');
 
-    g
+        g
             .append('text')
             .attr("dy", ".35em")
             .attr('y', function(d) { return d.height / 2; })
@@ -298,12 +316,6 @@ function update(root) {
     // Toggle children on click.
     function click(d) {
 
-        // if (d === root) {
-        //     layout.direction = layout.direction == -1 ? 1 : -1;
-        //     refresh();
-        //     return;
-        // }
-
         if (d.children) {
             d._children = d.children;
             d.children = undefined;
@@ -315,9 +327,16 @@ function update(root) {
         refresh();
     }
 
-    gnodes.exit().remove();
+    gnodes.exit()
+        .transition()
+        .style('opacity', 0)
+        .attr('transform', function(d) {
+                var x = d.parent ? d.parent.x : d.x;
+                var y = d.parent ? d.parent.y : d.y;
+                return `translate(${x},${y})`;
+            })
+        .remove();
     glinks.exit().remove();
-
 }
 
 </script>

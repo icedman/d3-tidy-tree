@@ -9,10 +9,6 @@ function Layout() {
     this.parentChildSeparation = 100;
     this.direction = -1;
 
-    // todo remove this delta thingy (just post-process -- rotate)
-    this.deltaX = 0;
-    this.deltaY = this.deltaX ? 0 : 1;
-
     // match contour
     this._thirdWalk = function(node) {
 
@@ -76,31 +72,24 @@ function Layout() {
 
         node.x = node.rx + x;
         node.y = node.ry + y;
-        var px = node.x + (node.width * this.deltaY);
-        var py = node.y + (node.height * this.deltaX);
-
-        var offX = 0;
-        var offX = 0;
-        if  (node.width > node.childrenBounds.width) {
-            offX = this.deltaX * (node.width/2 - node.childrenBounds.height/2);
-        }
+        var px = node.x + node.width;
+        var py = node.y;
 
         var offY = 0;
         if  (node.height > node.childrenBounds.height) {
-            offY = this.deltaY * (node.height/2 - node.childrenBounds.height/2);
+            offY = (node.height/2 - node.childrenBounds.height/2);
         }
 
         // compute relative x,y of children
         for(var i in node.children) {
             var child = node.children[i];
             this._secondWalk(child, 
-                px + (this.parentChildSeparation * this.deltaY) + offX,
-                py + (this.parentChildSeparation * this.deltaX) + offY);
+                px + this.parentChildSeparation,
+                py + offY);
         }
 
         if (this.centerNodeOverChildren) {
-            node.x += (this.deltaX * ((node.bounds.width/2) - (node.width/2)));
-            node.y += (this.deltaY * ((node.bounds.height/2) - (node.height/2)));
+            node.y += ((node.bounds.height/2) - (node.height/2));
         }
     };
 
@@ -120,8 +109,8 @@ function Layout() {
         var paddingX = 0;
         var paddingY = 0;
 
-        var dx = offsetX * this.deltaX;
-        var dy = offsetY * this.deltaY;
+        var dx = offsetX;
+        var dy = offsetY;
 
         // compute relative x,y of children
         for(var i in node.children) {
@@ -136,8 +125,7 @@ function Layout() {
             bounds.addToBounds({x:dx,y:dy,width:child.bounds.width,height:child.bounds.height});
             childrenBounds.addToBounds({x:dx,y:dy,width:child.bounds.width,height:child.bounds.height});
 
-            dx += this.deltaX * (child.bounds.width + paddingX);
-            dy += this.deltaY * (child.bounds.height + paddingY);
+            dy += (child.bounds.height + paddingY);
         }
 
         node.bounds = { x:bounds.x, y:bounds.y, width: bounds.width, height: bounds.height };
