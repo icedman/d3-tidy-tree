@@ -3,19 +3,22 @@ var Util = require('./util');
 
 function Layout() {
 
+    this.compressTree = true;
+
     // todo remove this delta thingy (just post-process -- rotate)
     this.deltaX = 0;
     this.deltaY = this.deltaX ? 0 : 1;
 
     // todo remove this direction thingy (just post-process -- mirroring)
-    this.direction = -1;
+    this.direction = 1;
 
     // parentChild separtion
-    this.parentChildSeparation = 50;
+    this.parentChildSeparation = 100;
 
+    // match contour
     this._thirdWalk = function(node) {
 
-        Util.contourNodeExtend = this.parentChildSeparation / 2;
+        Util.contourNodeExtend = this.parentChildSeparation / 4;
 
         var upperContour = [];
         var previousSibling;
@@ -139,7 +142,9 @@ function Layout() {
 
         this._firstWalk(node);
         this._secondWalk(node, 0, 0);
-        this._thirdWalk(node);
+
+        if (this.compressTree)
+            this._thirdWalk(node);
 
         // move root back to zero
         Util.moveTree(node, -node.x, -node.y);

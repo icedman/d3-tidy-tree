@@ -1,4 +1,4 @@
-// const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
+const MinifyPlugin = require("babel-minify-webpack-plugin");
 
 module.exports = {
     entry: './src/index.js',
@@ -7,6 +7,6 @@ module.exports = {
         filename: 'dist/d3TidyTree.js'
     },
     plugins: [
-        // new UglifyJSPlugin()
+        new MinifyPlugin()
     ]
 };

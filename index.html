@@ -18,8 +18,58 @@ rect {
 </style>
 <script type="text/javascript" src="d3.v4.min.js"></script>
 <script type="text/javascript" src="dist/d3TidyTree.js"></script>
+<script type="text/javascript" src="testData.js"></script>
+<body>
+<b>Data</b> 
+<select id="selData" onchange='loadData(this.value)'>
+    <option value='0'>sample</option>
+    <option value='1'>test01</option>
+    <option value='2'>test02</option>
+    <option value='3'>flare</option>
+</select>
+<b>Compress Tree</b> <input type="checkbox" id="compress" checked onchange="drawTree()"/>
+<div id="container"></div>
+
+
 <script type="text/javascript">
-var data = {
+var layout = new d3TidyTree.Layout();
+
+function loadData(sel) {
+    data = dataSamples[sel];
+    drawTree();
+}
+
+function drawTree() {
+
+    d3.select("svg").remove();
+    // clear some values
+    rootx = undefined;
+    rootx = undefined;
+
+    root = d3.hierarchy(data);
+    var descendants = root.descendants();
+
+    computeSizes(descendants);
+
+    layout.compressTree = document.querySelector('#compress').checked;
+    layout.tree(root);
+
+    var r = d3TidyTree.Util.computeBounds(descendants);
+    width = r.width + 400;
+    height = r.height + 200;
+
+
+    svg = d3.select("#container").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("class","root");
+
+    centerRoot(root);
+    update(root);
+}
+
+var sample = {
     name: "root",
     children: [
         { name:"node1" },
@@ -53,60 +103,36 @@ var data = {
     ]
 };
 
-// data = d3Extra.data;
+var dataSamples = [ sample, testData.test01, testData.test02, testData.flare ];
+var data = sample;
 
-var root = d3.hierarchy(data);
-var layout = new d3Extra.Layout();
-layout.direction = 1;
+function computeSizes(descendants) {
+    for (var i in descendants) {
+        var d = descendants[i];
 
-var descendants = root.descendants();
+        if (d.data.x_size != undefined && d.data.y_size != undefined) {
+            d.width = d.data.y_size * 8;
+            d.height = d.data.x_size * 8;
+            continue;
+        }
 
-for (var i in descendants) {
-    var d = descendants[i];
-
-    if (d.data.x_size != undefined && d.data.y_size != undefined) {
-        d.width = d.data.y_size * 8;
-        d.height = d.data.x_size * 8;
-        continue;
-    }
-
-    d.width = (d.data.name.length * 8) + 10;
-    d.height = 32;
-    if  (d.data.name == 'node3-1') {
-        d.height = 100;
+        d.width = (d.data.name.length * 8) + 10;
+        d.height = 32;
+        if  (d.data.name == 'node3-1') {
+            d.height = 100;
+        }
     }
 }
 
-// var tree = d3.tree().size([300,300]);
-// tree.nodeSize([100,200]);
-// tree.separation(function separation(a, b) {
-//     console.log('a ' + a.data.name);
-//     console.log('b ' + b.data.name);
-//   return (a.parent == b.parent ? 1 : 2);// / a.depth;
-// });
-// tree(root);
-
-layout.offsetX = 100;
-layout.tree(root);
-
-var r = d3Extra.Util.computeBounds(descendants);
-var width = r.width + 400;
-var height = r.height + 200;
-
-// append the svg object to the body of the page
-// appends a 'group' element to 'svg'
-// moves the 'group' element to the top left margin
-var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .append("g")
-    .attr("class","root")
-
+var svg;
 var rootx;
 var rooty;
+var width;
+var height;
+
 function centerRoot(root)
 {
-    var r = d3Extra.Util.computeBounds(root.descendants());
+    var r = d3TidyTree.Util.computeBounds(root.descendants());
     var xx = width / 2 - r.width / 2;
     var yy = height / 2 - r.height / 2;
 
@@ -119,7 +145,7 @@ function centerRoot(root)
         rootx = xx;
         rooty = yy;
     } else {
-        // TODO: do not translate.. peg root to its original x,y
+        // peg root to its original x,y
         xx = rootx;
         yy = rooty;
     }
@@ -128,17 +154,7 @@ function centerRoot(root)
         .attr("transform", `translate(${xx},${yy})`);
 }
 
-centerRoot(root);
-
-// d3.select("svg")
-//     .append("rect")
-//     .attr("x", 0)
-//     .attr("y", 0)
-//     .attr("width", width)
-//     .attr("height", height)
-//     .attr("style", "fill:blue;stroke:pink;stroke-width:5;fill-opacity:0.1;stroke-opacity:0.9");
-
-update(root);
+loadData(0);
 
 function update(root) {
     var i = 0;
@@ -260,17 +276,11 @@ function update(root) {
     // Toggle children on click.
     function click(d) {
 
-        // var i = 1;
-        // if (i) {
-        //     console.log(d.x + ',' + d.y);
+        // if (d === root) {
+        //     layout.direction = layout.direction == -1 ? 1 : -1;
+        //     refresh();
         //     return;
         // }
-
-        if (d.parent === undefined) {
-            layout.direction = layout.direction == -1 ? 1 : -1;
-            refresh();
-            return;
-        }
 
         if (d.children) {
             d._children = d.children;
@@ -290,4 +300,5 @@ function update(root) {
 
 </script>
 
+</body>
 </html>
