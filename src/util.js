@@ -2,8 +2,10 @@ var Rect = require('./rect');
 
 function Util()
 {
+    this.visits = 0;
     this.contourSteps = 10;
     this.contourNodeExtend = 120;
+    this.shallowContourQuery = false;
 
     this.computeBounds = function(nodes) {
         var r = new Rect();
@@ -15,7 +17,12 @@ function Util()
     }
 
     this._getContour = function(contour, node, mode) {
-        var s = (node.width + this.contourNodeExtend) / this.contourSteps;
+
+        if (mode == 0)
+            this.visits++;
+
+        var ex = (node.children && node.children.length > 0) ? this.contourNodeExtend : 0;
+        var s = (node.width + ex) / this.contourSteps;
         for(var i=0;i<(s+1);i++) {
             var x = (node.x + (s * i)) / this.contourSteps;
             x = Math.floor(x);
@@ -43,6 +50,9 @@ function Util()
 
         }
 
+        if (this.shallowContourQuery)
+            return;
+
         for(var j in node.children) {
             var child = node.children[j];
             this._getContour(contour, child, mode);
@@ -63,6 +73,16 @@ function Util()
             contour = [];
         this._getContour(contour, node, 0);
         return contour;
+    };
+
+    this.mergeUpperContours = function(contour1, contour2) {
+        for(var i in contour1) {
+            var c1 = contour1[i];
+            var c2 = contour2[i];
+            if  (c1 > c2 || c2 == undefined) {
+                contour2[i] = c1;
+            }
+        }
     };
 
     this._fillContourGap = function(contour) {

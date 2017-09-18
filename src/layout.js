@@ -3,11 +3,13 @@ var Util = require('./util');
 
 function Layout() {
 
+    this.viewType = 'tree';
     this.compressTree = true;
     this.centerNodeOverChildren = true;
     this.tryToBalanceTree = true;
     this.parentChildSeparation = 100;
     this.direction = -1;
+    this.cacheContour = true; // true save on computations
 
     // match contour
     this._thirdWalk = function(node) {
@@ -24,18 +26,22 @@ function Layout() {
 
             if (previousSibling != undefined) {
 
-                // upper contour is it's bottom
-                Util.getLowerContour(previousSibling, upperContour);
-                
-                // for(var j in previousSiblings) {
-                //     Util.getUpperContour(previousSiblings[j], upperContour);
-                // }
+                if (previousSibling.upperContour) {
+                    Util.mergeUpperContours(previousSibling.upperContour, upperContour);
+                    Util.shallowContourQuery = true;
+                    Util.getLowerContour(previousSibling, upperContour, true);
+                    Util.shallowContourQuery = false;
+                } else {
+                    // upper contour is it's bottom
+                    Util.getLowerContour(previousSibling, upperContour);
+                }
 
                 var lowerContour = Util.getUpperContour(c);
                 
                 var min = Util.compareContours(upperContour, lowerContour);
                 if (min > 0) {
 
+                    // optimize here
                     if (this.tryToBalanceTree) {
                         Util.moveTree(c, 0, -min/2);
                         for(j in previousSiblings) {
@@ -45,7 +51,6 @@ function Layout() {
                             upperContour[j] = upperContour[j] + min/2;
                         }
                     } else {
-
                         Util.moveTree(c, 0, -min);
                     }
                     
@@ -54,11 +59,19 @@ function Layout() {
             }
 
             previousSibling = c;
-            previousSiblings.push(c);
+            if (this.tryToBalanceTree) {
+                previousSiblings.push(c);
+            }
         }
 
-        // todo save contour for parent's use?
+        // save contour for parent's
         // achieve linear time?
+        if (this.cacheContour) {
+            if  (previousSibling) {
+                Util.getLowerContour(previousSibling, upperContour);
+            }
+            node.upperContour = upperContour;
+        }
     };
 
     // position the nodes based intial layout
@@ -145,6 +158,60 @@ function Layout() {
 
         if (this.direction == -1)
             Util.flipHorizontally(node);
+    };
+
+    this.mindmap = function(node) {
+
+        var children = node.children;
+
+        if (node.left == undefined) {
+            var left = [];
+            var right = [];
+            for(var i in node.children) {
+                if (i % 2) {
+                    left.push(node.children[i]);
+                } else {
+                    right.push(node.children[i]);
+                }
+            }
+            node.left = left;
+            node.right = right;
+        }
+
+        this.direction = -1;
+        node.children = node.left;
+        this.tree(node);
+
+        var y = node.y;
+
+        this.direction = 1;
+        node.children = node.right;
+        this.tree(node);
+
+        node.children = children;
+
+        // todo balance!
+        node.y = (node.y + y)/2;
+
+        // move root back to zero
+        Util.moveTree(node, -node.x, -node.y);
+    };
+
+    this.run = function(node) {
+        // Util.visits = 0;
+        // console.time();
+        
+        switch(this.viewType) {
+            case 'mindmap':
+                this.mindmap(node);
+                break;
+            case 'tree':
+            default:
+                this.tree(node);
+                break;
+        }
+        // console.timeEnd();
+        // console.log(Util.visits);
     };
 }
 
