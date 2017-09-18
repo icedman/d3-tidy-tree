@@ -23,11 +23,20 @@ rect {
 <b>Data</b> 
 <select id="selData" onchange='loadData(this.value)'>
     <option value='0'>sample</option>
-    <option value='1'>test01</option>
-    <option value='2'>test02</option>
-    <option value='3'>flare</option>
+    <option value='1'>flare</option>
+    <option value='2'>test01</option>
+    <option value='3'>test02</option>
+    <option value='4'>test03</option>
+    <option value='5'>test04</option>
+    <option value='6'>test05</option>
+    <option value='7'>test06</option>
+    
 </select>
+
 <b>Compress Tree</b> <input type="checkbox" id="compress" checked onchange="drawTree()"/>
+<b>Mirror Tree</b> <input type="checkbox" id="mirror" checked onchange="drawTree()"/>
+<b>Parent-Child Spacing</b> <input type="number" id="spacing" onchange="drawTree()" value="100"/>
+
 <div id="container"></div>
 
 
@@ -52,6 +61,8 @@ function drawTree() {
     computeSizes(descendants);
 
     layout.compressTree = document.querySelector('#compress').checked;
+    layout.parentChildSeparation = document.querySelector('#spacing').value;
+    layout.direction = document.querySelector('#mirror').checked ? -1 : 1;
     layout.tree(root);
 
     var r = d3TidyTree.Util.computeBounds(descendants);
@@ -103,7 +114,17 @@ var sample = {
     ]
 };
 
-var dataSamples = [ sample, testData.test01, testData.test02, testData.flare ];
+var dataSamples = [ 
+    sample,
+    testData.flare,
+    testData.test01,
+    testData.test02,
+    testData.test03,
+    testData.test04,
+    testData.test05,
+    testData.test06
+];
+
 var data = sample;
 
 function computeSizes(descendants) {
@@ -171,15 +192,16 @@ function update(root) {
     // update
     glinks
         .attr("x1", function(d) {
-            return d.source.px;
+            return d.source.x + d.source.width * d.source.direction;
         })
+        // .transition()
         .attr("y1", function(d) {
             return d.source.y + d.source.height/2;
         })
         .attr("x2", function(d) {
             return d.target.x;
         })
-        .transition()
+        // .transition()
         .attr("y2", function(d) {
             return d.target.y + d.target.height/2;
         });
@@ -188,7 +210,7 @@ function update(root) {
         .append("line")
         .attr("class", "link")
         .attr("x1", function(d) {
-            return d.source.px;
+            return d.source.x + d.source.width * d.source.direction;
         })
         .attr("y1", function(d) {
             return d.source.y + d.source.height/2;

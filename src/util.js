@@ -118,6 +118,19 @@ function Util()
             this.moveTree(child, dx, dy);
         }
     };
+
+    this._flipHorizontally = function(node, rootx) {
+        node.x = rootx - node.x;
+        for(var i in node.children) {
+            this._flipHorizontally(node.children[i], rootx);
+        }
+    };
+
+    this.flipHorizontally = function(node) {
+        for(var i in node.children) {
+            this._flipHorizontally(node.children[i], 0);
+        }
+    };
 }
 
 module.exports = new Util();

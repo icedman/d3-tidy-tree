@@ -6,16 +6,12 @@ function Layout() {
     this.compressTree = true;
     this.centerNodeOverChildren = true;
     this.tryToBalanceTree = true;
+    this.parentChildSeparation = 100;
+    this.direction = -1;
 
     // todo remove this delta thingy (just post-process -- rotate)
     this.deltaX = 0;
     this.deltaY = this.deltaX ? 0 : 1;
-
-    // todo remove this direction thingy (just post-process -- mirroring)
-    this.direction = 1;
-
-    // parentChild separtion
-    this.parentChildSeparation = 100;
 
     // match contour
     this._thirdWalk = function(node) {
@@ -78,12 +74,10 @@ function Layout() {
             node.ry = 0;
         }
 
-        node.direction = this.direction;
-
         node.x = node.rx + x;
         node.y = node.ry + y;
-        node.px = node.x + (node.width * this.direction * this.deltaY);
-        node.py = node.y + (node.height * this.direction * this.deltaX);
+        var px = node.x + (node.width * this.deltaY);
+        var py = node.y + (node.height * this.deltaX);
 
         var offX = 0;
         var offX = 0;
@@ -100,8 +94,8 @@ function Layout() {
         for(var i in node.children) {
             var child = node.children[i];
             this._secondWalk(child, 
-                node.px + (this.parentChildSeparation *this.direction * this.deltaY) + offX,
-                node.py + (this.parentChildSeparation *this.direction * this.deltaX) + offY);
+                px + (this.parentChildSeparation * this.deltaY) + offX,
+                py + (this.parentChildSeparation * this.deltaX) + offY);
         }
 
         if (this.centerNodeOverChildren) {
@@ -160,6 +154,9 @@ function Layout() {
 
         // move root back to zero
         Util.moveTree(node, -node.x, -node.y);
+
+        if (this.direction == -1)
+            Util.flipHorizontally(node);
     };
 }
 
