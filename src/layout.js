@@ -4,6 +4,8 @@ var Util = require('./util');
 function Layout() {
 
     this.compressTree = true;
+    this.centerNodeOverChildren = true;
+    this.tryToBalanceTree = true;
 
     // todo remove this delta thingy (just post-process -- rotate)
     this.deltaX = 0;
@@ -41,20 +43,30 @@ function Layout() {
                 
                 var min = Util.compareContours(upperContour, lowerContour);
                 if (min > 0) {
-                    Util.moveTree(c, 0, -min/2);
-                    for(j in previousSiblings) {
-                        Util.moveTree(previousSiblings[j], 0, min/2);
+
+                    if (this.tryToBalanceTree) {
+                        Util.moveTree(c, 0, -min/2);
+                        for(j in previousSiblings) {
+                            Util.moveTree(previousSiblings[j], 0, min/2);
+                        }
+                        for(j in upperContour) {
+                            upperContour[j] = upperContour[j] + min/2;
+                        }
+                    } else {
+
+                        Util.moveTree(c, 0, -min);
                     }
-                    for(j in upperContour) {
-                        upperContour[j] = upperContour[j] + min/2;
-                    }
+                    
                 }
+
             }
 
             previousSibling = c;
             previousSiblings.push(c);
         }
-        
+
+        // todo save contour for parent's use?
+        // achieve linear time?
     };
 
     // position the nodes based intial layout
@@ -92,8 +104,10 @@ function Layout() {
                 node.py + (this.parentChildSeparation *this.direction * this.deltaX) + offY);
         }
 
-        node.x += (this.deltaX * ((node.bounds.width/2) - (node.width/2)));
-        node.y += (this.deltaY * ((node.bounds.height/2) - (node.height/2)));
+        if (this.centerNodeOverChildren) {
+            node.x += (this.deltaX * ((node.bounds.width/2) - (node.width/2)));
+            node.y += (this.deltaY * ((node.bounds.height/2) - (node.height/2)));
+        }
     };
 
     // initial layout
@@ -123,8 +137,6 @@ function Layout() {
 
             child.rx = dx;
             child.ry = dy;
-
-            // console.log(child.data.name + ' ' + child.bounds.height);
 
             // compute child bounds (including its descendants up to the leaves)
             bounds.addToBounds({x:dx,y:dy,width:child.bounds.width,height:child.bounds.height});
