@@ -17,7 +17,6 @@ rect {
     opacity: 0.2;
 }
 </style>
-<script type="text/javascript" src="d3.v4.min.js"></script>
 <script type="text/javascript" src="dist/d3TidyTree.js"></script>
 <script type="text/javascript" src="testData.js"></script>
 <body>
@@ -42,8 +41,8 @@ rect {
 
 <b>Path</b> 
 <select id="selPath" onchange='drawTree()'>
-    <option value='curved' selected>Curved</option>
-    <option value='straight'>Straight</option>
+    <option value='curved'>Curved</option>
+    <option value='straight' selected>Straight</option>
     <option value='angled'>Angled</option>
 </select>
 
@@ -55,7 +54,10 @@ rect {
 
 
 <script type="text/javascript">
-var layout = new d3TidyTree.Layout();
+var d3 = lib.d3;
+var layout = new lib.Layout();
+
+; // new d3TidyTree.Layout();
 var defaultFont = 'times';
 var pathType = 'curved';
 
@@ -77,18 +79,17 @@ function drawTree() {
     computeNodeSizes(descendants, d3.select("#container").append("svg"));
     d3.select("svg").remove();
 
-    layout.compressTree = document.querySelector('#compress').checked;
     layout.viewType = document.querySelector('#selView').value;
     pathType = document.querySelector('#selPath').value;
 
     layout.direction = document.querySelector('#flip').checked ? -1 : 1;
+    layout.compressTree = document.querySelector('#compress').checked;
     layout.parentChildSeparation = + document.querySelector('#spacing').value;
     layout.run(root);
 
-    var r = d3TidyTree.Util.computeBounds(descendants);
+    var r = lib.Util.computeBounds(descendants);
     width = r.width + 400;
     height = r.height + 200;
-
 
     svg = d3.select("#container").append("svg")
     .attr("width", width)
@@ -112,8 +113,8 @@ var sample = {
         },
         { name:"node3", pathType: 'angled',
             children: [
-                { name: "node3-1" },
-                { name: "node3-2",
+                { name: "node3-1 ----- xx" },
+                { name: "node3-2 ----- xx",
 
                     children: [
                         { name: "node3-1" },
@@ -150,32 +151,25 @@ var data = sample;
 function computeNodeSizes(descendants, svg) {
 
     svg.append('g')
-            .selectAll('.dummyText')
-            .data(descendants)
-            .enter()
-            .append('text')
-            .attr('font-family', function(d) {
-                return d.data.font || defaultFont;
-            })
-            .attr('dy', '.35em')
-            .text(function(d) { return d.data.name })
-            .each(function(d,i) {
-                d.width = this.getComputedTextLength() + 8;
-                d.height = this.getBBox().height + 8;
-
-                if (d.depth > 1) {
-                    d.data.pathType = 'angled';
-                }
-
-                this.remove() 
-            })
+        .selectAll('.dummyText')
+        .data(descendants)
+        .enter()
+        .append('text')
+        .attr('font-family', function(d) {
+            return d.data.font || defaultFont;
+        })
+        .attr('dy', '.35em')
+        .text(function(d) { return d.data.name })
+        .each(function(d,i) {
+            d.width = this.getComputedTextLength() + 8;
+            d.height = this.getBBox().height + 8;
+            this.remove() 
+        })
 
     for (var i in descendants) {
         var d = descendants[i];
-
         if (d.data.name != undefined)
             continue;
-
         if (d.data.x_size != undefined && d.data.y_size != undefined) {
             d.width = d.data.y_size * 8;
             d.height = d.data.x_size * 8;
@@ -192,7 +186,7 @@ var height;
 
 function centerRoot(root)
 {
-    var r = d3TidyTree.Util.computeBounds(root.descendants());
+    var r = lib.Util.computeBounds(root.descendants());
     var xx = width / 2 - r.width / 2;
     var yy = height / 2 - r.height / 2;
 
@@ -383,6 +377,12 @@ function update(root) {
                 }
                 return 'lightsteelblue';
             })
+            .attr('opacity', 1)
+            .attr('display', function(d) {
+                if (d.children == undefined && d._children == undefined)
+                    return 'none';
+                return '';
+            })
 
     var g = genter
             .append('g')
@@ -432,8 +432,9 @@ function update(root) {
         g        
             .append('circle')
             .attr('r', 8)
+            .attr('opacity', 1)
             .attr('display', function(d) {
-                if (d.children == undefined || d.children.length == 0)
+                if (d.children == undefined && d._children == undefined)
                     return 'none';
                 return '';
             })
@@ -449,12 +450,33 @@ function update(root) {
 
     function refresh() {
         layout.run(root);
+
         update(root);
         centerRoot(root);
     }
 
     // Toggle children on click.
     function click(d) {
+        if (!d.parent) {
+            var didCollapse = false;
+            d.children.map( c => { 
+                if (c.children) {
+                    c._children = c.children;
+                    c.children = undefined; 
+                    didCollapse = true;
+                }
+            })
+            if (!didCollapse) {
+                d.children.map( c => { 
+                    if (c._children) {
+                        c.children = c._children;
+                        c._children = undefined; 
+                    }
+                })
+            }
+            refresh();
+            return;
+        }
         if (d.children) {
             d._children = d.children;
             d.children = undefined;
@@ -462,7 +484,6 @@ function update(root) {
             d.children = d._children;
             d._children = undefined;
         }
-
         refresh();
     }
 

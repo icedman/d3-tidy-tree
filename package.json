@@ -7,6 +7,8 @@
   "author": "icedman <m4rvin2005@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "babel-minify-webpack-plugin": "^0.2.0"
+    "babel-minify-webpack-plugin": "^0.2.0",
+    "d3": "^4.10.2",
+    "d3-flextree-v4": "^1.0.1"
   }
 }
