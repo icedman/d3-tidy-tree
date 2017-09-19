@@ -21,30 +21,29 @@ function Util()
         if (mode == 0)
             this.visits++;
 
-        var ex = (node.children && node.children.length > 0) ? this.contourNodeExtend : 0;
-        var s = (node.width + ex) / this.contourSteps;
-        for(var i=0;i<(s+1);i++) {
-            var x = (node.x + (s * i)) / this.contourSteps;
-            x = Math.floor(x);
-
+        var w = node.width;
+        if (node.children && node.children.length>0)
+            w += this.contourNodeExtend;
+        for(var i=node.x;i<node.x+w;i++) {
+            var x = Math.floor(i / this.contourSteps);
             var value;
             if (mode == 0) {
                 // lower contour
                 value = node.y + node.height;
                 if (contour[x] == undefined) {
-                    contour[x] = value;
+                    contour[x] = Math.floor(value);
                 }
                 if (contour[x] < value) {
-                    contour[x] = value;
+                    contour[x] = Math.floor(value);
                 }
             } else {
                 // upper contour
                 value = node.y;
                 if (contour[x] == undefined) {
-                    contour[x] = value;
+                    contour[x] = Math.floor(value);
                 }
                 if (contour[x] > value) {
-                    contour[x] = value;
+                    contour[x] = Math.floor(value);
                 }
             }
 
@@ -104,6 +103,9 @@ function Util()
         this._fillContourGap(upper);
         this._fillContourGap(lower);
 
+        // console.log(upper);
+        // console.log(lower);
+
         // first key
         var f1,f2;
         for(var i in upper) {
@@ -131,8 +133,6 @@ function Util()
         node.x += dx;
         node.y += dy;
         
-        // console.log(node.data.name + ' (' + node.x + ',' + node.y + ')');
-
         for(var i in node.children) {
             var child = node.children[i];
             this.moveTree(child, dx, dy);

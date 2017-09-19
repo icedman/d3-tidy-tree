@@ -5,9 +5,10 @@
 text {
     fill: black;
 }
-line {
+.link {
     stroke:rgb(250,120,120);
     stroke-width:2;
+    fill: none;
 }
 svg {
     background-color: gainsboro;
@@ -39,6 +40,12 @@ rect {
     <option value='mindmap'>MindMap</option>
 </select>
 
+<b>Path</b> 
+<select id="selPath" onchange='drawTree()'>
+    <option value='curved' selected>Curved</option>
+    <option value='straight'>Straight</option>
+    <option value='angled'>Angled</option>
+</select>
 
 <b>Compress Tree</b> <input type="checkbox" id="compress" checked onchange="drawTree()"/>
 <b>Flip Tree</b> <input type="checkbox" id="flip" onchange="drawTree()"/>
@@ -50,6 +57,7 @@ rect {
 <script type="text/javascript">
 var layout = new d3TidyTree.Layout();
 var defaultFont = 'times';
+var pathType = 'curved';
 
 function loadData(sel) {
     data = dataSamples[sel];
@@ -71,6 +79,7 @@ function drawTree() {
 
     layout.compressTree = document.querySelector('#compress').checked;
     layout.viewType = document.querySelector('#selView').value;
+    pathType = document.querySelector('#selPath').value;
 
     layout.direction = document.querySelector('#flip').checked ? -1 : 1;
     layout.parentChildSeparation = + document.querySelector('#spacing').value;
@@ -101,7 +110,7 @@ var sample = {
                 { name: "node2-2" },
            ]
         },
-        { name:"node3",
+        { name:"node3", pathType: 'angled',
             children: [
                 { name: "node3-1" },
                 { name: "node3-2",
@@ -115,7 +124,7 @@ var sample = {
            ]
         },
         { name: "node4",
-
+            pathType: 'straight',
             children: [
                 { name: "node3-1" },
                 { name: "node3-2" },
@@ -149,13 +158,16 @@ function computeNodeSizes(descendants, svg) {
                 return d.data.font || defaultFont;
             })
             .attr('dy', '.35em')
-            //.attr("opacity", 0.0)      // not really necessary
             .text(function(d) { return d.data.name })
             .each(function(d,i) {
-                var thisWidth = this.getComputedTextLength()
-                d.width = thisWidth;
-                d.height = 34;
-                this.remove() // remove them just after displaying them
+                d.width = this.getComputedTextLength() + 8;
+                d.height = this.getBBox().height + 8;
+
+                if (d.depth > 1) {
+                    d.data.pathType = 'angled';
+                }
+
+                this.remove() 
             })
 
     for (var i in descendants) {
@@ -204,6 +216,79 @@ function centerRoot(root)
 
 loadData(0);
 
+function getLinkEndPoints(d) {
+    var startX = d.source.x;
+    
+    startX += d.source.x > d.target.x ? -d.source.width : d.source.width;
+    if (!d.source.parent) {
+        if (d.source.viewType == 'mindmap' && d.source.x > d.target.x) {
+            startX += d.source.width;
+        }
+    }
+
+    var endX = d.target.x;
+    var startY =  d.source.y + d.source.height/2;
+    var endY = d.target.y + d.target.height/2;
+    return { startX:startX, startY:startY, endX: endX, endY: endY };
+}
+
+function curvedPath(d) {
+    var p = getLinkEndPoints(d);
+    var w = Math.abs(p.startX - p.endX);
+    if (d.source.x > d.target.x) {
+        w *= -1;
+    }
+
+    var s = 1.5;
+    // we draw left to right
+    d.path = 'M' + p.startX + ',' + p.startY + ' ' +
+        'C' + (p.startX + w / s) + ',' + p.startY + ' ' +
+        (p.endX - w / s) + ',' + p.endY + ' ' +
+        p.endX + ',' + p.endY;
+    return d.path;
+}
+
+function angledPath(d) {
+    var p = getLinkEndPoints(d);
+    var w = Math.abs(p.startX - p.endX);
+    if (d.source.x > d.target.x) {
+        w *= -1;
+    }
+
+    var s = 2;
+    // we draw left to right
+    d.path = 'M' + p.startX + ',' + p.startY + ' ' +
+        'L' + (p.startX + w / s) + ',' + p.startY + ' L' +
+        (p.endX - w / s) + ',' + p.endY + ' L' +
+        p.endX + ',' + p.endY;
+    return d.path;
+}
+
+
+function straightPath(d) {
+    var p = getLinkEndPoints(d);
+
+    // we draw left to right
+    d.path = 'M' + p.startX + ',' + p.startY + ' ' +
+        'L' + p.endX + ',' + p.endY;
+    return d.path;
+}
+
+// pass on path 'd'
+function makePath(d) {
+    var pt = d.source.data.pathType || pathType;
+    if (pt == 'curved')
+        return curvedPath(d);
+    if (pt == 'angled')
+        return angledPath(d);
+    return straightPath(d);
+}
+
+// pass nodes select
+function makeNode(g) {
+
+}
+
 function update(root) {
     var i = 0;
     var nodes = root.descendants();
@@ -211,13 +296,17 @@ function update(root) {
             .data(nodes, function(d, i) { if (!d.id) d.id = 'node_' + (i); return d.id; })
 
     var links = root.links();
-    var glinks = svg.selectAll('line.link')
+    var glinks = svg.selectAll('path.link')
            .data(links, function(d) { if (!d.id) d.id = 'link_' + d.source.id + '-' + d.target.id; return d.id; })
 
     var glinksenter = glinks.enter()
     
     // update
     glinks
+        .transition()
+        .attr('d', makePath);
+
+    /*
         .attr("x1", function(d) {
             var offX = d.source.x > d.target.x ? -d.source.width : d.source.width;
             if (!d.source.parent && offX < 0)
@@ -234,10 +323,17 @@ function update(root) {
         .attr("y2", function(d) {
             return d.target.y + d.target.height/2;
         });
+    */
 
     glinksenter
-        .append("line")
-        .attr("class", "link")
+        .append('path')
+        .attr('class', 'link')
+        .attr('d', makePath)
+        .style('opacity', 0)
+        .transition()
+        .style('opacity', 1)
+
+        /*
         .attr("x1", function(d) {
             var offX = d.source.x > d.target.x ? -d.source.width : d.source.width;
             if (!d.source.parent && offX < 0)
@@ -262,6 +358,7 @@ function update(root) {
             return d.target.y + d.target.height/2;
         })
         .style('opacity', 1)
+        */
 
 
     var genter = gnodes.enter()
@@ -290,7 +387,6 @@ function update(root) {
     var g = genter
             .append('g')
             .attr("class", "node")
-            .on('click', click);
 
         g            
             .style('opacity', 0)
@@ -304,16 +400,6 @@ function update(root) {
             .attr('transform', function(d) {
                 return `translate(${d.x},${d.y})`;
             });
-
-        g        
-            .append('circle')
-            .attr('r', 8)
-            .attr('fill', function(d) {
-                if (d._children != undefined) {
-                    return 'blue';
-                }
-                return 'lightsteelblue';
-            })
 
         g        
             .append('rect')
@@ -343,6 +429,24 @@ function update(root) {
                 return d.data.name;
             });
 
+        g        
+            .append('circle')
+            .attr('r', 8)
+            .attr('display', function(d) {
+                if (d.children == undefined || d.children.length == 0)
+                    return 'none';
+                return '';
+            })
+            .attr('fill', function(d) {
+                if (d._children != undefined) {
+                    return 'blue';
+                }
+                return 'lightsteelblue';
+            })
+
+        g.on('click', click);
+
+
     function refresh() {
         layout.run(root);
         update(root);
@@ -363,7 +467,7 @@ function update(root) {
     }
 
     gnodes.exit()
-        .style('opacity', 1)
+        .style('opacity', 0.5)
         .transition()
         .style('opacity', 0)
         .attr('transform', function(d) {
@@ -374,15 +478,14 @@ function update(root) {
         .remove();
 
     glinks.exit()
-        .style('opacity', 1)
+        .style('opacity', 0.5)
         .transition()
         .style('opacity', 0)
-        .attr('x2', function(d) {
-            return d.source.x;
-        })
-        .attr('y2', function(d) {
-            return d.source.y;
-        })
+        // .attr('d', function(d) {
+        //     var x = d.source.x;
+        //     var y = d.source.y + d.source.height/2;
+        //     return `M${x},${y} L${x},${y} L${x},${y} L${x},${y}`;
+        // })
         .remove();
 }
 
